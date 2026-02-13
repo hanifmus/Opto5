@@ -5,6 +5,12 @@ import DashboardLayout from './layout/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Profile from './pages/Profile';
+import Accounts from './pages/Accounts';
+import Inventory from './pages/inventory';
+import StockFlow from './pages/StockFlow';
+import Alerts from './pages/Alerts';
+import Reports from './pages/Reports';
+import History from './pages/History';
 
 // Dashboard component is imported above
 
@@ -19,7 +25,12 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/products" element={<Products />} />
                     <Route path="/profile" element={<Profile />} />
-                    <Route path="/inventory" element={<Dashboard />} />
+                    <Route path="/accounts" element={<Accounts />} />
+                    <Route path="/inventory" element={<Inventory />} />
+                    <Route path="/stock-flow" element={<StockFlow />} />
+                    <Route path="/alerts" element={<Alerts />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/history" element={<History />} />
                 </Route>
             </Routes>
         </Router>

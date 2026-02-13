@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   Plus,
   ChevronRight,
@@ -9,44 +8,71 @@ import {
   Save
 } from 'lucide-react';
 import '../index.css';
+import { useEffect, useState } from 'react';
 
 const Products = () => {
-  const [activeTab, setActiveTab] = useState('spectacles'); // 'spectacles' or 'lenses'
+
+const [activeTab, setActiveTab] = useState('spectacles'); // 'spectacles' or 'lenses'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+
+  useEffect(() => {
+    if (activeTab === 'spectacles') {
+      fetch('http://127.0.0.1:8000/api/stock-spec')
+        .then(res => res.json())
+        .then(data => setSpectacles(data))
+        .catch(err => console.error(err));
+    } else {
+      fetch('http://127.0.0.1:8000/api/stock-contact')
+        .then(res => res.json())
+        .then(data => setLenses(data))
+        .catch(err => console.error(err));
+    }
+  }, [activeTab]);
+
+
+  
 
   // Dynamic Form State
   const [formData, setFormData] = useState({});
 
   // Mock Data State
   const [spectacles, setSpectacles] = useState([
-    { id: 'SID001', brand: 'Ray-Ban RB5154', color: 'Black/Silver', size: 'M', type: 'Half-Rim', qty: 'Acetate' },
-    { id: 'SID002', brand: 'AeroX (Rayban)', color: 'Black', size: 'M', type: 'Full-Rim', qty: 'Acetate' },
-    { id: 'SID003', brand: 'ClassicPro (Oakley)', color: 'Brown', size: 'L', type: 'Half-Rim', qty: 'Metal' },
-    { id: 'SID004', brand: 'UrbanLite (Gucci)', color: 'Gold', size: 'M', type: 'Full-Rim', qty: 'Metal' },
-    { id: 'SID005', brand: 'SportMax (Prada)', color: 'Blue', size: 'S', type: 'Full-Rim', qty: 'TR90' },
+    
   ]);
 
   const [lenses, setLenses] = useState([
-    { id: 'CID001', brand: 'Acuvue', power: '-1.00', category: 'Daily', bc: '8.5', dia: '14.2', expiry: '2027-03-15' },
-    { id: 'CID002', brand: 'Acuvue', power: '-2.00', category: 'Daily', bc: '8.5', dia: '14.2', expiry: '2027-06-20' },
-    { id: 'CID003', brand: 'Acuvue', power: '-3.00', category: 'Monthly', bc: '8.4', dia: '14.0', expiry: '2027-01-10' },
-    { id: 'CID004', brand: 'Acuvue', power: '-4.00', category: 'Monthly', bc: '8.4', dia: '14.0', expiry: '2027-11-05' },
+    
   ]);
 
   const handleToggle = () => {
     setActiveTab(prev => prev === 'spectacles' ? 'lenses' : 'spectacles');
   };
 
-  const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this product?')) {
-      if (activeTab === 'spectacles') {
-        setSpectacles(prev => prev.filter(item => item.id !== id));
-      } else {
-        setLenses(prev => prev.filter(item => item.id !== id));
-      }
-    }
-  };
+  const handleDelete = (key) => {
+  if (confirm('Are you sure you want to delete this product?')) {
+    const baseUrl =
+      activeTab === 'spectacles'
+        ? `http://127.0.0.1:8000/api/stock-spec/${key}`
+        : `http://127.0.0.1:8000/api/stock-contact/${key}`;
+
+    fetch(baseUrl, {
+      method: 'DELETE',
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to delete');
+        // Remove from state after successful deletion
+        if (activeTab === 'spectacles') {
+          setSpectacles(prev => prev.filter(item => item.sid != key));
+        } else {
+          setLenses(prev => prev.filter(item => item.cid != key));
+        }
+      })
+      .catch(err => console.error(err));
+  }
+};
+
+
 
   const openModal = (product = null) => {
     setEditingProduct(product);
@@ -56,11 +82,11 @@ const Products = () => {
       // Initial empty state based on tab
       if (activeTab === 'spectacles') {
         setFormData({
-          id: '', brand: '', color: '', size: '', type: '', qty: ''
+          id: '', model: '', brand: '', color: '', size: '', type: '', material: '', qty: ''
         });
       } else {
         setFormData({
-          id: '', brand: '', power: '', category: '', bc: '', dia: '', expiry: ''
+          id: '', brand: '', power: '', category: '', bc: '', dia: '', expiry: '', qty: ''
         });
       }
     }
@@ -73,27 +99,40 @@ const Products = () => {
   };
 
   const handleSave = () => {
-    // Simple Validation
-    if (!formData.id || !formData.brand) {
-      alert("Please fill in required fields (ID, Brand)");
-      return;
-    }
+  const baseUrl =
+    activeTab === 'spectacles'
+      ? 'http://127.0.0.1:8000/api/stock-spec'
+      : 'http://127.0.0.1:8000/api/stock-contact';
 
-    if (activeTab === 'spectacles') {
-      if (editingProduct) {
-        setSpectacles(prev => prev.map(item => item.id === editingProduct.id ? formData : item));
-      } else {
-        setSpectacles(prev => [...prev, formData]);
-      }
-    } else {
-      if (editingProduct) {
-        setLenses(prev => prev.map(item => item.id === editingProduct.id ? formData : item));
-      } else {
-        setLenses(prev => [...prev, formData]);
-      }
-    }
-    setIsModalOpen(false);
-  };
+  const url = editingProduct
+    ? `${baseUrl}/${formData.sid}`   // ✅ IMPORTANT
+    : baseUrl;
+
+  fetch(url, {
+    method: editingProduct ? 'PUT' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData),
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('Request failed');
+      return res.json();
+    })
+    .then(() => {
+      setIsModalOpen(false);
+      setEditingProduct(null);
+
+      // reload data
+      fetch(baseUrl)
+        .then(res => res.json())
+        .then(
+          activeTab === 'spectacles'
+            ? setSpectacles
+            : setLenses
+        );
+    })
+    .catch(err => console.error(err));
+};
+
 
   return (
     <div className="product-page-container">
@@ -130,11 +169,13 @@ const Products = () => {
             {activeTab === 'spectacles' ? (
               <tr>
                 <th>Product ID</th>
-                <th>Brand & Model</th>
+                <th>Model</th>
+                <th>Brand</th>
                 <th>Color</th>
                 <th>Size (mm)</th>
                 <th>Frame Type</th>
                 <th>Material</th>
+                <th>Quantity</th>
                 <th>Action</th>
               </tr>
             ) : (
@@ -146,6 +187,7 @@ const Products = () => {
                 <th>Base Curve</th>
                 <th>Diameter</th>
                 <th>Expired Date</th>
+                <th>Quantity</th>
                 <th>Action</th>
               </tr>
             )}
@@ -154,11 +196,13 @@ const Products = () => {
             {activeTab === 'spectacles' ? (
               spectacles.map((item, index) => (
                 <tr key={index}>
-                  <td className="text-muted">{item.id}</td>
+                  <td className="text-muted">{item.sid}</td>
+                  <td className="font-medium">{item.framemodel}</td>
                   <td className="font-medium">{item.brand}</td>
                   <td>{item.color}</td>
                   <td>{item.size}</td>
-                  <td>{item.type}</td>
+                  <td>{item.frameType}</td>
+                  <td>{item.material}</td>
                   <td>{item.qty}</td>
                   <td>
                     <div className="action-row">
@@ -166,7 +210,7 @@ const Products = () => {
                       <button className="action-btn edit" onClick={() => openModal(item)}>
                         <Edit size={18} />
                       </button>
-                      <button className="action-btn delete" onClick={() => handleDelete(item.id)}>
+                      <button className="action-btn delete" onClick={() => handleDelete(item.sid)}>
                         <XCircle size={18} />
                       </button>
                     </div>
@@ -176,19 +220,20 @@ const Products = () => {
             ) : (
               lenses.map((item, index) => (
                 <tr key={index}>
-                  <td className="text-muted">{item.id}</td>
+                  <td className="text-muted">{item.cid}</td>
                   <td className="font-medium">{item.brand}</td>
                   <td>{item.power}</td>
                   <td>{item.category}</td>
-                  <td>{item.bc}</td>
-                  <td>{item.dia}</td>
-                  <td>{item.expiry}</td>
+                  <td>{item.baseCurve}</td>
+                  <td>{item.diameter}</td>
+                  <td>{item.expiryDate}</td>
+                  <td>{item.qty}</td>
                   <td>
                     <div className="action-row">
                       <button className="action-btn edit" onClick={() => openModal(item)}>
                         <Edit size={18} />
                       </button>
-                      <button className="action-btn delete" onClick={() => handleDelete(item.id)}>
+                      <button className="action-btn delete" onClick={() => handleDelete(item.cid)}>
                         <XCircle size={18} />
                       </button>
                     </div>
@@ -215,12 +260,20 @@ const Products = () => {
               <div className="form-grid">
                 {activeTab === 'spectacles' ? (
                   <>
+                    <input
+                      type="text"
+                      name="id"
+                      value={formData.sid}
+                      readOnly
+                      className="readonly-input"
+                    />
+
                     <div className="form-group">
-                      <label>Product ID</label>
-                      <input type="text" name="id" value={formData.id} onChange={handleInputChange} placeholder="SID..." />
+                      <label>Model</label>
+                      <input type="text" name="framemodel" value={formData.framemodel} onChange={handleInputChange} placeholder="Aerox..." />
                     </div>
                     <div className="form-group">
-                      <label>Brand & Model</label>
+                      <label>Brand</label>
                       <input type="text" name="brand" value={formData.brand} onChange={handleInputChange} placeholder="Ray-Ban..." />
                     </div>
                     <div className="form-group">
@@ -233,7 +286,7 @@ const Products = () => {
                     </div>
                     <div className="form-group">
                       <label>Frame Type</label>
-                      <select name="type" value={formData.type} onChange={handleInputChange}>
+                      <select name="frameType" value={formData.frameType} onChange={handleInputChange}>
                         <option value="">Select Type</option>
                         <option value="Full-Rim">Full-Rim</option>
                         <option value="Half-Rim">Half-Rim</option>
@@ -242,14 +295,18 @@ const Products = () => {
                     </div>
                     <div className="form-group">
                       <label>Material</label>
-                      <input type="text" name="qty" value={formData.qty} onChange={handleInputChange} placeholder="Acetate/Metal" />
+                      <input type="text" name="material" value={formData.material} onChange={handleInputChange} placeholder="Acetate/Metal" />
+                    </div>
+                    <div className="form-group">
+                      <label>Quantity</label>
+                      <input type="text" name="qty" value={formData.qty} onChange={handleInputChange} placeholder="100" />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="form-group">
                       <label>Product ID</label>
-                      <input type="text" name="id" value={formData.id} onChange={handleInputChange} placeholder="CID..." />
+                      <input type="text" name="sid" value={formData.sid} onChange={handleInputChange} placeholder="CID..." />
                     </div>
                     <div className="form-group">
                       <label>Brand</label>
